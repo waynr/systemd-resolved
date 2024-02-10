@@ -1,8 +1,8 @@
 ---
 
-- name: systemd-resolved | remove resolvconf
+- name: remove resolvconf
   tags:
-    - resolver
+    - resolved
     - package
   package:
     state: absent
@@ -10,72 +10,103 @@
     name: 
       - resolvconf
       - openresolv
+  when:
+    - ansible_os_family == 'Debian'
 
-- name: systemd-resolved | install libnss-resolve
+- name: install libnss-resolve
   tags:
-    - resolver
+    - resolved
     - package
   package:
     name: libnss-resolve
+  when:
+    - ansible_os_family == 'Debian'
 
-- name: systemd-resolved | install systemd-resolved
+- name: install systemd-resolved
   tags:
-    - resolver
+    - resolved
     - package
   package:
     name: systemd-resolved
-  when: 
-  - ansible_os_family == 'Debian'
-  - ansible_lsb.major_release | int >= 12
+  when:
+    - ansible_os_family == 'Debian'
+    - ansible_lsb.major_release | int >= 12
 
-- name: systemd-resolved | config
+
+- name: add default config
   tags:
-    - resolver
+    - resolved
     - config
   template:
     src: resolved.conf.j2
     dest: /etc/systemd/resolved.conf
-  notify: restart resolved
+  notify: restart systemd-resolved
 
-- name: systemd-resolved | check resolvectl
+- name: ensure the /etc/systemd/resolved.conf.d/ directory exists
+  file:
+    state: directory
+    path: "/etc/systemd/resolved.conf.d/"
+  tags:
+    - resolved
+    - config
+
+- name: add specific configuration files
+  tags:
+    - resolved
+    - config
+  ansible.builtin.template:
+    src: resolved.conf.d/resolved.conf.j2
+    dest: "/etc/systemd/resolved.conf.d/{{ item.key }}"
+    owner: root
+    group: root
+    mode: 0644
+  with_dict: "{{ resolved_conf_d_configs }}"
+  notify: restart systemd-resolved
+
+- name: check resolvectl
+  tags:
+    - resolved
+    - config
   stat:
     path: /usr/bin/resolvectl
   register: ctl_stat
 
-- name: systemd-resolved | emulate resolvconf
+- name: emulate resolvconf
   tags:
-    - resolvconf
+    - resolved
+    - config
   file:
     src: /usr/bin/resolvectl
     dest: /sbin/resolvconf
     state: link
   when: ctl_stat.stat.exists is defined and ctl_stat.stat.exists
 
-- name: systemd-resolved | dhclient hook
+- name: dhclient hook
   tags:
     - hook
+    - resolved
+    - config
   copy:
     src: resolvconf
     dest: /etc/dhcp/dhclient-enter-hooks.d/
   when: ctl_stat.stat.exists is defined and ctl_stat.stat.exists
 
-- name: systemd-resolved | service
+- name: service
   tags:
-    - resolver
+    - resolved
     - service
   systemd:
     name: systemd-resolved
     masked: no
     enabled: yes
     state: started
-  notify: use resolved
+  notify: use systemd-resolved
 
-- name: systemd-resolved | stub /etc/resolv.conf
+- name: stub /etc/resolv.conf
   tags:
-  - resolv
+  - resolved
   file:
     src: /run/systemd/resolve/stub-resolv.conf
     dest: /etc/resolv.conf
     state: link
     force: true
-

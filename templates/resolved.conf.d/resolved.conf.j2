@@ -1,0 +1,10 @@
+# {{ ansible_managed }}
+[Resolve]
+DNS={{ item.value.preferred_dns | join(' ') }}
+FallbackDNS={{ item.value.fallback_dns }}
+{% for domain in item.value.search_domains %}
+Domains={{ domain }}
+{% endfor %}
+DNSSEC={{ item.value.dnssec | default('no', true) }}
+LLMNR={{ item.value.llmnr | default('resolve', true) }}
+MulticastDNS={{ item.value.multicastdns | default('resolve', true) }}

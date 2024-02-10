@@ -1,4 +1,9 @@
 ---
-preferred_dns: 1.1.1.1
-fallback_dns: 1.0.0.1
-search_domains: []
+resolved_preferred_dns: 1.1.1.1
+resolved_fallback_dns: 1.0.0.1
+resolved_search_domains: []
+resolved_conf_d_configs: {}
+resolved_preferred_dns: ""
+resolved_dnssec: "no"
+resolved_llmnr: "resolve"
+resolved_multicastdns: "resolve"
